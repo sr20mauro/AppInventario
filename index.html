@@ -1,0 +1,602 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Control de Inventario & Stock (CLP)</title>
+  <meta name="theme-color" content="#2563eb">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/1524/1524855.png">
+  <!-- FontAwesome para iconos -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <style>
+    :root {
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --bg: #f8fafc;
+      --surface: #ffffff;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --danger: #ef4444;
+      --danger-bg: #fef2f2;
+      --warning: #f59e0b;
+      --warning-bg: #fffbeb;
+      --success: #10b981;
+      --success-bg: #ecfdf5;
+      --radius: 14px;
+      --shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -2px rgba(0,0,0,0.05);
+      --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1);
+    }
+
+    * { box-sizing: border-box; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 0; }
+    body { background-color: var(--bg); color: var(--text); padding-bottom: 2rem; }
+
+    /* Layout principal */
+    .app-container { max-width: 768px; margin: 0 auto; padding: 1rem; }
+    
+    /* Header */
+    header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.2rem; padding-top: 0.5rem; }
+    .brand { display: flex; align-items: center; gap: 0.6rem; font-size: 1.3rem; font-weight: 800; color: var(--primary); }
+    .brand i { font-size: 1.5rem; }
+
+    .header-actions { display: flex; gap: 0.5rem; }
+    .icon-btn { background: var(--surface); border: 1px solid var(--border); padding: 0.6rem; border-radius: 10px; cursor: pointer; color: var(--text-muted); font-size: 1rem; transition: all 0.2s; }
+    .icon-btn:hover { color: var(--primary); border-color: var(--primary); }
+
+    /* Botón PWA */
+    .btn-install { display: none; width: 100%; background: var(--success); color: white; border: none; padding: 0.85rem; border-radius: var(--radius); font-weight: 700; margin-bottom: 1rem; cursor: pointer; font-size: 0.95rem; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25); text-align: center; }
+    .btn-install i { margin-right: 0.4rem; }
+
+    /* Panel de KPIs / Resumen */
+    .kpi-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; margin-bottom: 1.25rem; }
+    @media (min-width: 520px) {
+      .kpi-grid { grid-template-columns: repeat(4, 1fr); }
+    }
+    .kpi-card { background: var(--surface); border: 1px solid var(--border); padding: 0.9rem; border-radius: var(--radius); box-shadow: var(--shadow); }
+    .kpi-card .kpi-title { font-size: 0.75rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.3rem; }
+    .kpi-card .kpi-value { font-size: 1.25rem; font-weight: 800; color: var(--text); }
+    .kpi-card.alert-card .kpi-value { color: var(--danger); }
+    .kpi-card.alert-card { background: var(--danger-bg); border-color: #fca5a5; }
+
+    /* Barra de Búsqueda y Filtros */
+    .controls-panel { background: var(--surface); border: 1px solid var(--border); padding: 0.9rem; border-radius: var(--radius); margin-bottom: 1.25rem; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 0.75rem; }
+    .search-box { position: relative; width: 100%; }
+    .search-box i { position: absolute; left: 0.9rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); }
+    .search-box input { width: 100%; padding: 0.75rem 0.75rem 0.75rem 2.5rem; border: 1px solid var(--border); border-radius: 10px; font-size: 0.95rem; outline: none; transition: border 0.2s; }
+    .search-box input:focus { border-color: var(--primary); }
+
+    .filter-bar { display: flex; gap: 0.5rem; overflow-x: auto; padding-bottom: 0.2rem; }
+    .chip { padding: 0.45rem 0.85rem; border-radius: 20px; font-size: 0.82rem; font-weight: 600; border: 1px solid var(--border); background: var(--bg); color: var(--text-muted); cursor: pointer; white-space: nowrap; transition: all 0.2s; }
+    .chip.active { background: var(--primary); color: white; border-color: var(--primary); }
+    .chip.chip-alert.active { background: var(--danger); border-color: var(--danger); }
+
+    /* Acciones Generales */
+    .action-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+    .btn-primary { background: var(--primary); color: white; border: none; padding: 0.75rem 1.2rem; border-radius: 10px; font-weight: 700; font-size: 0.95rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.5rem; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25); transition: background 0.2s; }
+    .btn-primary:hover { background: var(--primary-hover); }
+
+    /* Lista de Productos */
+    .product-list { display: flex; flex-direction: column; gap: 0.85rem; }
+    .product-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; box-shadow: var(--shadow); position: relative; transition: border-color 0.2s, transform 0.1s; }
+    .product-card.low-stock { border-left: 5px solid var(--danger); }
+
+    .product-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem; }
+    .product-name { font-weight: 700; font-size: 1.05rem; color: var(--text); }
+    .product-category { font-size: 0.75rem; background: #eff6ff; color: var(--primary); padding: 0.2rem 0.55rem; border-radius: 6px; font-weight: 600; display: inline-block; margin-top: 0.2rem; }
+    
+    .stock-badge { font-size: 0.75rem; font-weight: 700; padding: 0.25rem 0.6rem; border-radius: 20px; display: inline-flex; align-items: center; gap: 0.3rem; }
+    .stock-badge.ok { background: var(--success-bg); color: var(--success); }
+    .stock-badge.alert { background: var(--danger-bg); color: var(--danger); }
+
+    .product-body { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem; margin: 0.75rem 0; font-size: 0.88rem; background: var(--bg); padding: 0.65rem; border-radius: 8px; }
+    .info-item span { color: var(--text-muted); font-size: 0.78rem; display: block; }
+    .info-item strong { color: var(--text); font-weight: 700; }
+
+    /* Controles de Stock Rápido + Acciones */
+    .product-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 0.75rem; padding-top: 0.6rem; border-top: 1px solid var(--border); }
+    .stock-controls { display: flex; align-items: center; gap: 0.5rem; }
+    .btn-qty { width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); font-weight: 700; font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--text); transition: all 0.15s; }
+    .btn-qty:active { transform: scale(0.92); background: var(--bg); }
+    .qty-display { font-weight: 800; font-size: 1rem; min-width: 32px; text-align: center; }
+
+    .card-actions { display: flex; gap: 0.4rem; }
+    .btn-icon-action { background: none; border: none; color: var(--text-muted); padding: 0.4rem; cursor: pointer; border-radius: 6px; font-size: 0.95rem; transition: color 0.2s; }
+    .btn-icon-action.edit:hover { color: var(--primary); }
+    .btn-icon-action.delete:hover { color: var(--danger); }
+
+    /* Modal */
+    .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.5); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 1rem; }
+    .modal-overlay.active { display: flex; }
+    .modal { background: var(--surface); width: 100%; max-width: 480px; border-radius: 18px; padding: 1.5rem; box-shadow: var(--shadow-lg); animation: slideUp 0.2s ease-out; }
+
+    @keyframes slideUp {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; }
+    .modal-title { font-size: 1.2rem; font-weight: 800; }
+    .btn-close { background: none; border: none; font-size: 1.2rem; color: var(--text-muted); cursor: pointer; }
+
+    .form-group { margin-bottom: 1rem; }
+    .form-group label { display: block; font-size: 0.82rem; font-weight: 700; color: var(--text); margin-bottom: 0.35rem; }
+    .form-group input, .form-group select { width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 10px; font-size: 0.95rem; outline: none; }
+    .form-group input:focus { border-color: var(--primary); }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+
+    .modal-footer { display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem; }
+    .btn-secondary { background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 0.75rem 1.2rem; border-radius: 10px; font-weight: 600; cursor: pointer; }
+
+    /* Estado vacío */
+    .empty-state { text-align: center; padding: 3rem 1rem; color: var(--text-muted); background: var(--surface); border-radius: var(--radius); border: 1px dashed var(--border); }
+    .empty-state i { font-size: 2.8rem; margin-bottom: 0.75rem; color: var(--border); }
+
+    #fileImport { display: none; }
+  </style>
+</head>
+<body>
+
+  <div class="app-container">
+    <button id="btnInstall" class="btn-install"><i class="fa-solid fa-download"></i> Instalar Aplicación de Inventario</button>
+
+    <!-- Encabezado -->
+    <header>
+      <div class="brand">
+        <i class="fa-solid fa-boxes-stacked"></i>
+        <span>ControlStock CLP</span>
+      </div>
+      <div class="header-actions">
+        <button class="icon-btn" id="btnExport" title="Exportar Copia de Seguridad"><i class="fa-solid fa-file-export"></i></button>
+        <button class="icon-btn" id="btnImportTrigger" title="Importar Copia de Seguridad"><i class="fa-solid fa-file-import"></i></button>
+        <input type="file" id="fileImport" accept=".json">
+      </div>
+    </header>
+
+    <!-- Resumen KPIs -->
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-title">Productos</div>
+        <div class="kpi-value" id="kpiTotalProducts">0</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-title">Unidades Total</div>
+        <div class="kpi-value" id="kpiTotalUnits">0</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-title">Valor Inventario</div>
+        <div class="kpi-value" id="kpiTotalValue">$0</div>
+      </div>
+      <div class="kpi-card alert-card" id="kpiAlertCard">
+        <div class="kpi-title">Poco Stock</div>
+        <div class="kpi-value" id="kpiLowStock">0</div>
+      </div>
+    </div>
+
+    <!-- Buscador y Filtros -->
+    <div class="controls-panel">
+      <div class="search-box">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" id="searchInput" placeholder="Buscar por nombre o categoría...">
+      </div>
+      <div class="filter-bar" id="categoryChips">
+        <button class="chip active" data-filter="all">Todos</button>
+        <button class="chip chip-alert" data-filter="low">⚠️ Poco Stock</button>
+      </div>
+    </div>
+
+    <!-- Barra de acción principal -->
+    <div class="action-bar">
+      <h2 style="font-size: 1.1rem; font-weight: 800;">Lista de Productos</h2>
+      <button class="btn-primary" id="btnOpenAddModal"><i class="fa-solid fa-plus"></i> Nuevo Producto</button>
+    </div>
+
+    <!-- Listado de Productos -->
+    <div class="product-list" id="productList"></div>
+  </div>
+
+  <!-- Modal para Agregar / Editar Producto -->
+  <div class="modal-overlay" id="productModal">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title" id="modalTitle">Nuevo Producto</div>
+        <button class="btn-close" id="btnCloseModal"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form id="productForm">
+        <input type="hidden" id="productId">
+        
+        <div class="form-group">
+          <label for="productName">Nombre del Producto *</label>
+          <input type="text" id="productName" placeholder="Ej. Cable HDMI 2m" required>
+        </div>
+
+        <div class="form-group">
+          <label for="productCategory">Categoría</label>
+          <input type="text" id="productCategory" placeholder="Ej. Electrónica, Almacén, Accesorios" list="categoryList">
+          <datalist id="categoryList"></datalist>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="productStock">Unidades Actuales *</label>
+            <input type="number" id="productStock" min="0" value="0" required>
+          </div>
+          <div class="form-group">
+            <label for="productMinStock">Stock Mínimo Alerta *</label>
+            <input type="number" id="productMinStock" min="0" value="5" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="productPrice">Precio Unitario ($ CLP) *</label>
+          <input type="number" id="productPrice" min="0" step="1" value="0" placeholder="Ej. 15000" required>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" id="btnCancelModal">Cancelar</button>
+          <button type="submit" class="btn-primary">Guardar Producto</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // ----------------------------------------------------
+    // 1. REGISTRO DE SERVICE WORKER & PWA MANIFEST DINÁMICO
+    // ----------------------------------------------------
+    if ('serviceWorker' in navigator) {
+      const swCode = `
+        self.addEventListener('install', (e) => self.skipWaiting());
+        self.addEventListener('activate', (e) => e.waitUntil(clients.claim()));
+        self.addEventListener('fetch', (e) => e.respondWith(fetch(e.request).catch(() => caches.match(e.request))));
+      `;
+      const blob = new Blob([swCode], { type: 'text/javascript' });
+      navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(() => {});
+    }
+
+    // Instalación PWA
+    let deferredPrompt;
+    const btnInstall = document.getElementById('btnInstall');
+
+    const manifestData = {
+      name: "Control de Inventario y Stock CLP",
+      short_name: "Inventario CLP",
+      start_url: window.location.href,
+      display: "standalone",
+      background_color: "#f8fafc",
+      theme_color: "#2563eb",
+      orientation: "portrait",
+      icons: [{
+        src: "https://cdn-icons-png.flaticon.com/512/1524/1524855.png",
+        sizes: "512x512",
+        type: "image/png"
+      }]
+    };
+    const manifestBlob = new Blob([JSON.stringify(manifestData)], { type: 'application/json' });
+    const manifestLink = document.createElement('link');
+    manifestLink.rel = 'manifest';
+    manifestLink.href = URL.createObjectURL(manifestBlob);
+    document.head.appendChild(manifestLink);
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      btnInstall.style.display = 'block';
+    });
+
+    btnInstall.addEventListener('click', async () => {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') btnInstall.style.display = 'none';
+        deferredPrompt = null;
+      }
+    });
+
+    // Permisos de Notificaciones
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+
+    // ----------------------------------------------------
+    // 2. ESTADO Y LÓGICA DE NEGOCIO (FORMATO CLP)
+    // ----------------------------------------------------
+    let products = JSON.parse(localStorage.getItem('inventory_app_products_clp')) || [
+      { id: '1', name: 'Aceite de Oliva 1L', category: 'Abarrotes', stock: 3, minStock: 5, price: 8500 },
+      { id: '2', name: 'Detergente Líquido 3L', category: 'Limpieza', stock: 12, minStock: 4, price: 12000 },
+      { id: '3', name: 'Arroz Grado 1 (1kg)', category: 'Abarrotes', stock: 25, minStock: 10, price: 1800 }
+    ];
+
+    let currentFilter = 'all'; 
+    let searchQuery = '';
+
+    function saveState() {
+      localStorage.setItem('inventory_app_products_clp', JSON.stringify(products));
+      render();
+    }
+
+    function checkAndNotifyLowStock(product) {
+      if (product.stock <= product.minStock) {
+        if ('Notification' in window && Notification.permission === 'granted') {
+          new Notification('⚠️ Alerta de Bajo Stock', {
+            body: `El producto "${product.name}" tiene solo ${product.stock} unidad(es) restante(s).`,
+            icon: 'https://cdn-icons-png.flaticon.com/512/1524/1524855.png'
+          });
+        }
+      }
+    }
+
+    // Formateo exacto en Pesos Chilenos (CLP) sin decimales
+    function formatCLP(amount) {
+      return new Intl.NumberFormat('es-CL', {
+        style: 'currency',
+        currency: 'CLP',
+        maximumFractionDigits: 0,
+        minimumFractionDigits: 0
+      }).format(amount);
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/[&<>"']/g, (m) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
+      }[m]));
+    }
+
+    // ----------------------------------------------------
+    // 3. RENDERIZADO E INTERFAZ
+    // ----------------------------------------------------
+    const productListEl = document.getElementById('productList');
+    const searchInput = document.getElementById('searchInput');
+    const categoryChipsEl = document.getElementById('categoryChips');
+    const categoryListDatalist = document.getElementById('categoryList');
+
+    function render() {
+      renderKPIs();
+      renderCategoryChips();
+      renderProducts();
+    }
+
+    function renderKPIs() {
+      const totalProducts = products.length;
+      const totalUnits = products.reduce((acc, p) => acc + Number(p.stock), 0);
+      const totalValue = products.reduce((acc, p) => acc + (Number(p.stock) * Number(p.price)), 0);
+      const lowStockCount = products.filter(p => p.stock <= p.minStock).length;
+
+      document.getElementById('kpiTotalProducts').textContent = totalProducts;
+      document.getElementById('kpiTotalUnits').textContent = totalUnits;
+      document.getElementById('kpiTotalValue').textContent = formatCLP(totalValue);
+      document.getElementById('kpiLowStock').textContent = lowStockCount;
+    }
+
+    function renderCategoryChips() {
+      const categories = [...new Set(products.map(p => p.category).filter(Boolean))];
+      
+      categoryListDatalist.innerHTML = categories.map(c => `<option value="${escapeHtml(c)}">`).join('');
+
+      let html = `
+        <button class="chip ${currentFilter === 'all' ? 'active' : ''}" onclick="setFilter('all')">Todos</button>
+        <button class="chip chip-alert ${currentFilter === 'low' ? 'active' : ''}" onclick="setFilter('low')">⚠️ Poco Stock</button>
+      `;
+
+      categories.forEach(cat => {
+        html += `<button class="chip ${currentFilter === cat ? 'active' : ''}" onclick="setFilter('${escapeHtml(cat)}')">${escapeHtml(cat)}</button>`;
+      });
+
+      categoryChipsEl.innerHTML = html;
+    }
+
+    function setFilter(filter) {
+      currentFilter = filter;
+      render();
+    }
+
+    function renderProducts() {
+      let filtered = products.filter(p => {
+        const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                              (p.category && p.category.toLowerCase().includes(searchQuery.toLowerCase()));
+        
+        if (!matchesSearch) return false;
+
+        if (currentFilter === 'all') return true;
+        if (currentFilter === 'low') return p.stock <= p.minStock;
+        return p.category === currentFilter;
+      });
+
+      if (filtered.length === 0) {
+        productListEl.innerHTML = `
+          <div class="empty-state">
+            <i class="fa-solid fa-box-open"></i>
+            <p>No se encontraron productos en el inventario.</p>
+          </div>
+        `;
+        return;
+      }
+
+      productListEl.innerHTML = filtered.map(p => {
+        const isLowStock = p.stock <= p.minStock;
+        const totalProductValue = p.stock * p.price;
+
+        return `
+          <div class="product-card ${isLowStock ? 'low-stock' : ''}">
+            <div class="product-header">
+              <div>
+                <div class="product-name">${escapeHtml(p.name)}</div>
+                ${p.category ? `<span class="product-category">${escapeHtml(p.category)}</span>` : ''}
+              </div>
+              <span class="stock-badge ${isLowStock ? 'alert' : 'ok'}">
+                ${isLowStock ? '<i class="fa-solid fa-triangle-exclamation"></i> Bajo Stock' : '<i class="fa-solid fa-check"></i> Stock Normal'}
+              </span>
+            </div>
+
+            <div class="product-body">
+              <div class="info-item">
+                <span>Precio Unitario</span>
+                <strong>${formatCLP(p.price)}</strong>
+              </div>
+              <div class="info-item">
+                <span>Valor Total Stock</span>
+                <strong>${formatCLP(totalProductValue)}</strong>
+              </div>
+              <div class="info-item">
+                <span>Stock Actual</span>
+                <strong>${p.stock} un.</strong>
+              </div>
+              <div class="info-item">
+                <span>Stock Mínimo</span>
+                <strong>${p.minStock} un.</strong>
+              </div>
+            </div>
+
+            <div class="product-footer">
+              <div class="stock-controls">
+                <button class="btn-qty" onclick="changeStock('${p.id}', -1)" title="Restar 1">-</button>
+                <span class="qty-display">${p.stock}</span>
+                <button class="btn-qty" onclick="changeStock('${p.id}', 1)" title="Sumar 1">+</button>
+              </div>
+              <div class="card-actions">
+                <button class="btn-icon-action edit" onclick="openEditModal('${p.id}')" title="Editar"><i class="fa-solid fa-pen"></i></button>
+                <button class="btn-icon-action delete" onclick="deleteProduct('${p.id}')" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Modificar stock
+    window.changeStock = function(id, delta) {
+      const product = products.find(p => p.id === id);
+      if (!product) return;
+
+      const oldStock = product.stock;
+      product.stock = Math.max(0, Number(product.stock) + delta);
+
+      if (product.stock <= product.minStock && oldStock > product.minStock) {
+        checkAndNotifyLowStock(product);
+      }
+
+      saveState();
+    };
+
+    window.deleteProduct = function(id) {
+      if (confirm('¿Estás seguro de que deseas eliminar este producto?')) {
+        products = products.filter(p => p.id !== id);
+        saveState();
+      }
+    };
+
+    searchInput.addEventListener('input', (e) => {
+      searchQuery = e.target.value.trim();
+      renderProducts();
+    });
+
+    // ----------------------------------------------------
+    // 4. MODAL DE FORMULARIO
+    // ----------------------------------------------------
+    const productModal = document.getElementById('productModal');
+    const productForm = document.getElementById('productForm');
+    const modalTitle = document.getElementById('modalTitle');
+
+    document.getElementById('btnOpenAddModal').addEventListener('click', () => {
+      productForm.reset();
+      document.getElementById('productId').value = '';
+      modalTitle.textContent = 'Nuevo Producto';
+      productModal.classList.add('active');
+    });
+
+    function closeModal() {
+      productModal.classList.remove('active');
+    }
+
+    document.getElementById('btnCloseModal').addEventListener('click', closeModal);
+    document.getElementById('btnCancelModal').addEventListener('click', closeModal);
+
+    window.openEditModal = function(id) {
+      const p = products.find(prod => prod.id === id);
+      if (!p) return;
+
+      document.getElementById('productId').value = p.id;
+      document.getElementById('productName').value = p.name;
+      document.getElementById('productCategory').value = p.category || '';
+      document.getElementById('productStock').value = p.stock;
+      document.getElementById('productMinStock').value = p.minStock;
+      document.getElementById('productPrice').value = p.price;
+
+      modalTitle.textContent = 'Editar Producto';
+      productModal.classList.add('active');
+    };
+
+    productForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const id = document.getElementById('productId').value;
+      const name = document.getElementById('productName').value.trim();
+      const category = document.getElementById('productCategory').value.trim();
+      const stock = parseInt(document.getElementById('productStock').value, 10) || 0;
+      const minStock = parseInt(document.getElementById('productMinStock').value, 10) || 0;
+      const price = Math.round(parseFloat(document.getElementById('productPrice').value)) || 0;
+
+      if (id) {
+        const index = products.findIndex(p => p.id === id);
+        if (index !== -1) {
+          products[index] = { id, name, category, stock, minStock, price };
+          checkAndNotifyLowStock(products[index]);
+        }
+      } else {
+        const newProduct = { id: Date.now().toString(), name, category, stock, minStock, price };
+        products.push(newProduct);
+        checkAndNotifyLowStock(newProduct);
+      }
+
+      saveState();
+      closeModal();
+    });
+
+    // ----------------------------------------------------
+    // 5. EXPORTAR E IMPORTAR DATOS (JSON)
+    // ----------------------------------------------------
+    document.getElementById('btnExport').addEventListener('click', () => {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(products, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `inventario_clp_backup_${new Date().toISOString().slice(0,10)}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    });
+
+    const fileImportInput = document.getElementById('fileImport');
+    document.getElementById('btnImportTrigger').addEventListener('click', () => {
+      fileImportInput.click();
+    });
+
+    fileImportInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(event) {
+        try {
+          const importedProducts = JSON.parse(event.target.result);
+          if (Array.isArray(importedProducts)) {
+            products = importedProducts;
+            saveState();
+            alert('Inventario importado exitosamente.');
+          } else {
+            alert('El archivo no tiene un formato válido.');
+          }
+        } catch (err) {
+          alert('Error al leer el archivo de respaldo.');
+        }
+      };
+      reader.readAsText(file);
+    });
+
+    // Cargar aplicación
+    render();
+  </script>
+</body>
+</html>
+```
